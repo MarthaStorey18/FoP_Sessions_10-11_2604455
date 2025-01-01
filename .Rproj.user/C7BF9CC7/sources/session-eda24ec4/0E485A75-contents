@@ -28,3 +28,36 @@ library(raster)
 eland_data <- read.csv("eland.csv")
 
 ```
+
+### Initially manage the dataset 
+
+```{r}
+
+#check if all observations are complete
+all(complete.cases(eland_data)) #they are, so no action is required
+
+#format datetime as posix
+eland_data$datetime <- ymd_hms(eland_data$datetime)
+
+#convert datetime to East AFrica time zone
+eland_data$datetime <- with_tz(eland_data$datetime,tzone = 'Africa/Nairobi')
+
+#check for spatial outliers
+plot(eland_data$latitude ~ eland_data$longitude, 
+     xlab = "Longitude", ylab = "Latitude", main = "Latitude vs Longitude") #there doesn't appear to be any
+
+#set the projection of the GPS data
+crs_latlong <- st_crs(4326) #epsg:4326 CRS coordinate reference system lat/long with WGS84 datum
+
+#project the data- convert it into a shape file object (a spatial dataframe with a geometry)
+eland_sp <- st_as_sf(eland_data, coords = c("longitude", "latitude"),crs=crs_latlong)
+
+#transform the data into a UTM coordinate ref system
+eland_sp_UTM <- st_transform(eland_sp, crs = 21036) 
+
+#convert the spatial dataset into a regular dataframe to be used in amt
+eland_df_UTM <- data.frame(st_coordinates(eland_sp_UTM),
+                   datetime = eland_sp_UTM$datetime,
+                   Animal_ID = eland_sp_UTM$Animal_ID)
+
+```
