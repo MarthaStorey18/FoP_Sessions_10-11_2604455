@@ -3,7 +3,7 @@
     "path": "~/Programming/FoP_10-11_2604455/FoP_10_in class practice/Session_11_assignment_2604455.Rmd",
     "project_path": null,
     "type": "r_markdown",
-    "hash": "1552075129",
+    "hash": "1940245973",
     "contents": "",
     "dirty": false,
     "created": 1735763897724.0,
@@ -14,15 +14,15 @@
         "chunk_output_type": "inline",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "91,0",
-        "scrollLine": "62"
+        "cursorPosition": "106,0",
+        "scrollLine": "77"
     },
     "folds": "",
-    "lastKnownWriteTime": 1735765496,
+    "lastKnownWriteTime": 1735765903,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1735765496595,
+    "last_content_update": 1735765903983,
     "read_only": false,
     "read_only_alternatives": []
 }

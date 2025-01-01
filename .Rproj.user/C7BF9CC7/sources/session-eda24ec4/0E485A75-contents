@@ -89,3 +89,18 @@ plot(eland_1, main='Trajectory of eland E04',col='blue')
 summarize_sampling_rate(eland_1)
 
 ```
+
+### Prepare the data for analysis 
+
+```{r}
+
+#1. resample to a common frequency -- 1 point every 2 hours. 
+eland_1 <- amt::track_resample(eland_1, rate = hours(2),tolerance = minutes(15))
+
+#2. remove bursts with fewer than 3 values
+eland_1 <- amt::filter_min_n_burst(eland_1,min_n = 3)
+
+#3. convert dataframe into 'steps'
+eland_1_steps <- amt::steps_by_burst(eland_1)
+
+```
