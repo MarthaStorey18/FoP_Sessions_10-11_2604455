@@ -1,0 +1,7 @@
+"0",""
+"0","#change observed steps of distance 0 to 0.1m so that the model can fit a gamma distribution "
+"0","eland_1_steps$sl_[eland_1_steps$sl_==0] <- 0.1"
+"0",""
+"0","#generate control steps and add to case steps"
+"0","steps_control <- random_steps(eland_1_steps)"
+"0",""

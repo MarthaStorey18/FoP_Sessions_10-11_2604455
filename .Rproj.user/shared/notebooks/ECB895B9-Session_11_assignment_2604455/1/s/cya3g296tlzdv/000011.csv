@@ -1,0 +1,2 @@
+"0","#add lodge locations on top of the distance raster plot"
+"0","plot(st_geometry(lodges), add = TRUE, pch = 21, bg = 'red', col = 'black', cex = 1.2)"

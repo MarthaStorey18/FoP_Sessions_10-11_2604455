@@ -1,0 +1,3 @@
+"0",""
+"0","#plot the slope data with lodge locations overlaid"
+"0","plot(slope,main= 'Slope (radians)')"

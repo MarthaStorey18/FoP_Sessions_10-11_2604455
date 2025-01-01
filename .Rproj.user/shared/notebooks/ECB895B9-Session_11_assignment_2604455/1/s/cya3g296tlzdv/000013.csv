@@ -1,0 +1,3 @@
+"0",""
+"0","#plot the elevation raster with lodge locations overlaid"
+"0","plot(elevation,main= 'Elevation (m)')"
