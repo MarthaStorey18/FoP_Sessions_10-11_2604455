@@ -229,3 +229,48 @@ names(steps_control)[names(steps_control) == "SLOPE_Serengeti"] <- "Slope"
 names(steps_control)[names(steps_control) == "last"] <- "Lodge_dist"
 
 ```
+
+### Fit iSSF models
+
+1. Fit the maximal model with all habitat terms (main effects) and possible interactions
+```{r}
+
+model_1 <- amt::fit_clogit(steps_control,
+                   formula = case_ ~ Elevation + Aspect + Slope + Lodge_dist + #habitat terms
+                     sl_*(Elevation + Aspect + Slope + Lodge_dist) +           #movement x habitat interactions
+                     log(sl_)*(Elevation + Aspect + Slope + Lodge_dist) +      #log of step length
+                     cos(ta_)*(Elevation + Aspect + Slope + Lodge_dist) +      #movement terms 
+                     strata(step_id_))                                         #strata for step id
+
+#model_1 output
+summary(model_1)
+
+```
+
+2. Fit the minimal model with only the main effects
+```{r}
+
+model_2 <- amt::fit_clogit(steps_control,
+                   formula = case_ ~ Elevation + Aspect + Slope + Lodge_dist +       # habitat terms
+                     sl_ + log(sl_) + cos(ta_) +                                     # movement terms 
+                     strata(step_id_))                                               # strata for step id
+
+#model_2 output
+summary(model_2)
+
+```
+
+3. Statistically compare the models 
+```{r}
+
+#Likelihood Ratio Test (LRT)
+anova(model_1$model,model_2$model)
+
+#The p-value of >0.05, indicates that the difference between the two models is not statistically significant and model 2 is an adequate fit of the data. The additional complexity provided by model 1 does not improve the model's fit. 
+
+#Akaike Information Criterion (AIC)
+AIC(model_1$model, model_2$model)
+
+#The difference in AIC being approximately >10 is considered strong evidence that the model with the lower AIC (model 2) is preferred. Adding interactions (as in model 1) does not improve the model enough to offset the increase in complexity.
+
+```
