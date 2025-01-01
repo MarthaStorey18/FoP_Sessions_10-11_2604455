@@ -126,3 +126,19 @@ plot(x, dgamma(x, shape = step_dist$params$shape, scale = step_dist$params$scale
      xlab = "Step length", ylab = "Density")
 
 ```
+
+### Turn angles 
+
+```{r}
+
+#fit vonmises distribution 
+turn_dist <- amt::fit_distr(eland_1_steps$ta_,dist_name = 'vonmises')
+
+#create a sequence of values, with the same length as the number of turn angles
+turn_ang <- seq(-pi,pi,length.out=length(eland_1_steps$ta_))
+
+#plot the resultant density function
+plot(turn_ang, CircStats::dvm(turn_ang, mu = turn_dist$params$mu, kappa = turn_dist$params$kappa), type = "l", 
+     xlab = "Turn angle", ylab = "Density")
+
+```
