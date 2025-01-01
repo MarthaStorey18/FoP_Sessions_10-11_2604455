@@ -154,3 +154,78 @@ eland_1_steps$sl_[eland_1_steps$sl_==0] <- 0.1
 steps_control <- random_steps(eland_1_steps)
 
 ```
+
+### Add spatial covariates
+#### Environmental covariates that potentially indicate habitat selection
+
+Aspect, elevation, and slope
+```{r}
+
+#read elevation raster
+elevation <- rast("./topography/DEM_Serengeti.tif")
+
+#read aspect raster
+aspect <- rast("./topography/ASPECT_Serengeti.tif")
+
+#read slope raster
+slope <- rast("./topography/SLOPE_Serengeti.tif")
+
+```
+
+Growth in tourist facilities (distance to lodges)
+```{r}
+
+#read tourist lodge spatial data from the specified directory and layer
+lodges <- st_read(dsn = "tourism/",layer ="large_lodgescamps")
+
+#transform the coordinate reference system (CRS) of the lodges data to match that of the elevation data
+lodges <- st_transform(lodges, crs = crs(elevation))
+
+#rasterise the lodges spatial data to match the resolution and extent of the elevation raster
+lodge <- rasterize(x = lodges, y = elevation)
+
+#calculate the distance from each cell in the raster to the nearest lodge
+lodge_dist <- distance(lodge)
+
+#set up the plotting area to have 2 rows and 2 columns of plots
+par(mfcol=c(2,2))
+
+#plot the new distance raster (in elevation units = meters)- each cell corresponds to the distance to the nearest lodge from the end of the step
+plot(lodge_dist, main='Tourist Lodge Dist. (m)')
+#add lodge locations on top of the distance raster plot
+plot(st_geometry(lodges), add = TRUE, pch = 21, bg = 'red', col = 'black', cex = 1.2)
+
+#plot the elevation raster with lodge locations overlaid
+plot(elevation,main= 'Elevation (m)')
+plot(st_geometry(lodges), add = TRUE, pch = 21, bg = 'red', col = 'black', cex = 1.2)
+
+#plot the aspect data with lodge locations overlaid
+plot(aspect, main= 'Aspect (radians)')
+plot(st_geometry(lodges), add = TRUE, pch = 21, bg = 'red', col = 'black', cex = 1.2)
+
+#plot the slope data with lodge locations overlaid
+plot(slope,main= 'Slope (radians)')
+plot(st_geometry(lodges), add = TRUE, pch = 21, bg = 'red', col = 'black', cex = 1.2)
+
+```
+
+Extract spatial covariates
+```{r}
+
+#extract covariates (elevation, aspect, slope, lodge distance) at the end of each step
+steps_control <- extract_covariates(steps_control,covariates = elevation)
+steps_control <- extract_covariates(steps_control,covariates = aspect)
+steps_control <- extract_covariates(steps_control,covariates = slope)  
+steps_control <- extract_covariates(steps_control,covariates = lodge_dist)
+
+#rename columns for clarity
+#elevation (m)
+names(steps_control)[names(steps_control) == "DEM_Serengeti"] <- "Elevation" 
+#aspect in degrees/radians
+names(steps_control)[names(steps_control) == "ASPECT_Serengeti"] <- "Aspect" 
+#slope (degrees or radians)
+names(steps_control)[names(steps_control) == "SLOPE_Serengeti"] <- "Slope"  
+#distance to the nearest tourist lodge (m)
+names(steps_control)[names(steps_control) == "last"] <- "Lodge_dist"
+
+```
