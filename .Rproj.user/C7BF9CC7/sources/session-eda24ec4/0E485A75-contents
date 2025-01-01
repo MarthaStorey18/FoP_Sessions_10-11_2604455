@@ -274,3 +274,17 @@ AIC(model_1$model, model_2$model)
 #The difference in AIC being approximately >10 is considered strong evidence that the model with the lower AIC (model 2) is preferred. Adding interactions (as in model 1) does not improve the model enough to offset the increase in complexity.
 
 ```
+
+### Brief explanation of a habitat selection and movement coefficient
+
+**Habitat selection coefficient: elevation (model 2)**
+
+-	Coefficient: −6.851×10^-3
+
+-	This suggests that elands are slightly less likely to select steps into areas of higher elevation. The exp(coef)=0.9932 indicates a very small reduction in the odds of selection for every unit increase in elevation, but this effect is not statistically significant (p=0.588). 
+
+**Movement coefficient: log(step length) (model 2)** 
+
+-	Coefficient: 8.753×10^−4
+
+-	The log-transformed step length has almost no effect on selection, with exp(coef)= 1.001, indicating no meaningful increase in odds of selection with step length. This term also lacks statistical significance (p=0.993), suggesting it may not be a strong driver in the model.
