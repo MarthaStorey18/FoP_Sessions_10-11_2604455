@@ -104,3 +104,25 @@ eland_1 <- amt::filter_min_n_burst(eland_1,min_n = 3)
 eland_1_steps <- amt::steps_by_burst(eland_1)
 
 ```
+
+### Step lengths 
+
+```{r}
+
+#what is the longest observed step?
+max(eland_1_steps$sl_)
+
+#plot a frequency histogram of step lengths to visualise their distribution
+hist(eland_1_steps$sl_,xlab = "Step length", ylab = "Density")
+
+#fit gamma a distribution 
+step_dist <- amt::fit_distr(eland_1_steps$sl_,dist_name = 'gamma')
+
+#create a sequence of values, with the same length as the number of step lengths
+x <- seq(0,max(eland_1_steps$sl_),length.out=length(eland_1_steps$sl_))
+
+#plot the resulant density function
+plot(x, dgamma(x, shape = step_dist$params$shape, scale = step_dist$params$scale), type = "l", 
+     xlab = "Step length", ylab = "Density")
+
+```
