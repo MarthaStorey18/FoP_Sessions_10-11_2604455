@@ -1,0 +1,3 @@
+"0",""
+"0","zebra_data$datetime <- with_tz(zebra_data$datetime,tzone = 'Africa/Nairobi')"
+"0",""

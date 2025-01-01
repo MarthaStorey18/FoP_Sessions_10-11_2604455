@@ -1,0 +1,290 @@
+# **GIS in R:** Session 11
+
+### **Author:** Martha Storey
+### **Date:** 26/12/24 (Last modeified: 30/12/24)
+
+### Set up the Script
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+```
+
+```{r}
+
+#clear R memory
+rm( list = ls())
+
+library(lubridate) # for data management
+library(sf) # for spatial points/lines analysis and management
+library(terra) # for raster analysis and management
+library(MASS) # distribution fitting
+library(CircStats) # circular statistics, for the vonmises distribution plots
+library(amt) # animal movement tools
+library(raster)
+
+#load the eland data
+eland_data <- read.csv("eland.csv")
+
+```
+
+### Initially manage the dataset 
+
+```{r}
+
+#check if all observations are complete
+all(complete.cases(eland_data)) #they are, so no action is required
+
+#format datetime as posix
+eland_data$datetime <- ymd_hms(eland_data$datetime)
+
+#convert datetime to East AFrica time zone
+eland_data$datetime <- with_tz(eland_data$datetime,tzone = 'Africa/Nairobi')
+
+#check for spatial outliers
+plot(eland_data$latitude ~ eland_data$longitude, 
+     xlab = "Longitude", ylab = "Latitude", main = "Latitude vs Longitude") #there doesn't appear to be any
+
+#set the projection of the GPS data
+crs_latlong <- st_crs(4326) #epsg:4326 CRS coordinate reference system lat/long with WGS84 datum
+
+#project the data- convert it into a shape file object (a spatial dataframe with a geometry)
+eland_sp <- st_as_sf(eland_data, coords = c("longitude", "latitude"),crs=crs_latlong)
+
+#transform the data into a UTM coordinate ref system
+eland_sp_UTM <- st_transform(eland_sp, crs = 21036) 
+
+#convert the spatial dataset into a regular dataframe to be used in amt
+eland_df_UTM <- data.frame(st_coordinates(eland_sp_UTM),
+                   datetime = eland_sp_UTM$datetime,
+                   Animal_ID = eland_sp_UTM$Animal_ID)
+
+```
+
+### Make Track
+
+```{r}
+
+#print the unique individuals in the dataset
+unique(eland_df_UTM$Animal_ID)
+
+#select one individual and make it into a dataframe
+eland_1 <- subset(eland_df_UTM, Animal_ID == "E04")
+
+#remove dataframe NAs
+eland_1 <- eland_1[!is.na(eland_1$datetime),]
+
+#convert dataframe into a track class object using the amt package
+eland_1 <- amt::make_track(tbl = as.data.frame(eland_1),
+                  .x = X, #column name of x
+                  .y = Y, #column name of y
+                  .t = datetime, #column name of date + time
+                  all_cols=TRUE)
+
+#plot points
+plot(eland_1, main='Trajectory of eland E04',col='blue')
+
+#observing the sampling rate
+summarize_sampling_rate(eland_1)
+
+```
+
+### Prepare the data for analysis 
+
+```{r}
+
+#1. resample to a common frequency -- 1 point every 2 hours. 
+eland_1 <- amt::track_resample(eland_1, rate = hours(2),tolerance = minutes(15))
+
+#2. remove bursts with fewer than 3 values
+eland_1 <- amt::filter_min_n_burst(eland_1,min_n = 3)
+
+#3. convert dataframe into 'steps'
+eland_1_steps <- amt::steps_by_burst(eland_1)
+
+```
+
+### Step lengths 
+
+```{r}
+
+#what is the longest observed step?
+max(eland_1_steps$sl_)
+
+#plot a frequency histogram of step lengths to visualise their distribution
+hist(eland_1_steps$sl_,xlab = "Step length", ylab = "Density")
+
+#fit gamma a distribution 
+step_dist <- amt::fit_distr(eland_1_steps$sl_,dist_name = 'gamma')
+
+#create a sequence of values, with the same length as the number of step lengths
+x <- seq(0,max(eland_1_steps$sl_),length.out=length(eland_1_steps$sl_))
+
+#plot the resulant density function
+plot(x, dgamma(x, shape = step_dist$params$shape, scale = step_dist$params$scale), type = "l", 
+     xlab = "Step length", ylab = "Density")
+
+```
+
+### Turn angles 
+
+```{r}
+
+#fit vonmises distribution 
+turn_dist <- amt::fit_distr(eland_1_steps$ta_,dist_name = 'vonmises')
+
+#create a sequence of values, with the same length as the number of turn angles
+turn_ang <- seq(-pi,pi,length.out=length(eland_1_steps$ta_))
+
+#plot the resultant density function
+plot(turn_ang, CircStats::dvm(turn_ang, mu = turn_dist$params$mu, kappa = turn_dist$params$kappa), type = "l", 
+     xlab = "Turn angle", ylab = "Density")
+
+```
+
+### Generate random steps 
+
+```{r}
+
+#change observed steps of distance 0 to 0.1m so that the model can fit a gamma distribution 
+eland_1_steps$sl_[eland_1_steps$sl_==0] <- 0.1
+
+#generate control steps and add to case steps
+steps_control <- random_steps(eland_1_steps)
+
+```
+
+### Add spatial covariates
+#### Environmental covariates that potentially indicate habitat selection
+
+Aspect, elevation, and slope
+```{r}
+
+#read elevation raster
+elevation <- rast("./topography/DEM_Serengeti.tif")
+
+#read aspect raster
+aspect <- rast("./topography/ASPECT_Serengeti.tif")
+
+#read slope raster
+slope <- rast("./topography/SLOPE_Serengeti.tif")
+
+```
+
+Growth in tourist facilities (distance to lodges)
+```{r}
+
+#read tourist lodge spatial data from the specified directory and layer
+lodges <- st_read(dsn = "tourism/",layer ="large_lodgescamps")
+
+#transform the coordinate reference system (CRS) of the lodges data to match that of the elevation data
+lodges <- st_transform(lodges, crs = crs(elevation))
+
+#rasterise the lodges spatial data to match the resolution and extent of the elevation raster
+lodge <- rasterize(x = lodges, y = elevation)
+
+#calculate the distance from each cell in the raster to the nearest lodge
+lodge_dist <- distance(lodge)
+
+#set up the plotting area to have 2 rows and 2 columns of plots
+par(mfcol=c(2,2))
+
+#plot the new distance raster (in elevation units = meters)- each cell corresponds to the distance to the nearest lodge from the end of the step
+plot(lodge_dist, main='Tourist Lodge Dist. (m)')
+#add lodge locations on top of the distance raster plot
+plot(st_geometry(lodges), add = TRUE, pch = 21, bg = 'red', col = 'black', cex = 1.2)
+
+#plot the elevation raster with lodge locations overlaid
+plot(elevation,main= 'Elevation (m)')
+plot(st_geometry(lodges), add = TRUE, pch = 21, bg = 'red', col = 'black', cex = 1.2)
+
+#plot the aspect data with lodge locations overlaid
+plot(aspect, main= 'Aspect (radians)')
+plot(st_geometry(lodges), add = TRUE, pch = 21, bg = 'red', col = 'black', cex = 1.2)
+
+#plot the slope data with lodge locations overlaid
+plot(slope,main= 'Slope (radians)')
+plot(st_geometry(lodges), add = TRUE, pch = 21, bg = 'red', col = 'black', cex = 1.2)
+
+```
+
+Extract spatial covariates
+```{r}
+
+#extract covariates (elevation, aspect, slope, lodge distance) at the end of each step
+steps_control <- extract_covariates(steps_control,covariates = elevation)
+steps_control <- extract_covariates(steps_control,covariates = aspect)
+steps_control <- extract_covariates(steps_control,covariates = slope)  
+steps_control <- extract_covariates(steps_control,covariates = lodge_dist)
+
+#rename columns for clarity
+#elevation (m)
+names(steps_control)[names(steps_control) == "DEM_Serengeti"] <- "Elevation" 
+#aspect in degrees/radians
+names(steps_control)[names(steps_control) == "ASPECT_Serengeti"] <- "Aspect" 
+#slope (degrees or radians)
+names(steps_control)[names(steps_control) == "SLOPE_Serengeti"] <- "Slope"  
+#distance to the nearest tourist lodge (m)
+names(steps_control)[names(steps_control) == "last"] <- "Lodge_dist"
+
+```
+
+### Fit iSSF models
+
+1. Fit the maximal model with all habitat terms (main effects) and possible interactions
+```{r}
+
+model_1 <- amt::fit_clogit(steps_control,
+                   formula = case_ ~ Elevation + Aspect + Slope + Lodge_dist + #habitat terms
+                     sl_*(Elevation + Aspect + Slope + Lodge_dist) +           #movement x habitat interactions
+                     log(sl_)*(Elevation + Aspect + Slope + Lodge_dist) +      #log of step length
+                     cos(ta_)*(Elevation + Aspect + Slope + Lodge_dist) +      #movement terms 
+                     strata(step_id_))                                         #strata for step id
+
+#model_1 output
+summary(model_1)
+
+```
+
+2. Fit the minimal model with only the main effects
+```{r}
+
+model_2 <- amt::fit_clogit(steps_control,
+                   formula = case_ ~ Elevation + Aspect + Slope + Lodge_dist +       # habitat terms
+                     sl_ + log(sl_) + cos(ta_) +                                     # movement terms 
+                     strata(step_id_))                                               # strata for step id
+
+#model_2 output
+summary(model_2)
+
+```
+
+3. Statistically compare the models 
+```{r}
+
+#Likelihood Ratio Test (LRT)
+anova(model_1$model,model_2$model)
+
+#The p-value of >0.05, indicates that the difference between the two models is not statistically significant and model 2 is an adequate fit of the data. The additional complexity provided by model 1 does not improve the model's fit. 
+
+#Akaike Information Criterion (AIC)
+AIC(model_1$model, model_2$model)
+
+#The difference in AIC being approximately >10 is considered strong evidence that the model with the lower AIC (model 2) is preferred. Adding interactions (as in model 1) does not improve the model enough to offset the increase in complexity.
+
+```
+
+### Brief explanation of a habitat selection and movement coefficient
+
+**Habitat selection coefficient: elevation (model 2)**
+
+-	Coefficient: −6.851×10^-3
+
+-	This suggests that elands are slightly less likely to select steps into areas of higher elevation. The exp(coef)=0.9932 indicates a very small reduction in the odds of selection for every unit increase in elevation, but this effect is not statistically significant (p=0.588). 
+
+**Movement coefficient: log(step length) (model 2)** 
+
+-	Coefficient: 8.753×10^−4
+
+-	The log-transformed step length has almost no effect on selection, with exp(coef)= 1.001, indicating no meaningful increase in odds of selection with step length. This term also lacks statistical significance (p=0.993), suggesting it may not be a strong driver in the model.

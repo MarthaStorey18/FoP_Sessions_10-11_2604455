@@ -1,0 +1,7 @@
+"0",""
+"0","#there appears to be an outlier at a latitude of 10 degrees ~ mid 2022"
+"0","#the rest of the data appears clustered around -20 degrees latitude"
+"0",""
+"0","#longitude vs datetime"
+"0","plot(zebra_geo$longitude ~ zebra_geo$datetime, "
+"0","     xlab = ""Datetime"", ylab = ""Longitude"", main = ""Longitude vs Datetime"")"

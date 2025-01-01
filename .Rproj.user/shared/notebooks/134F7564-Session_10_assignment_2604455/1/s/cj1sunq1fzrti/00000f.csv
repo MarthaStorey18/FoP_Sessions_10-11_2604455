@@ -1,0 +1,7 @@
+"0",""
+"0","#clean up duplicate columns"
+"0","zebra_geo <- zebra_geo[, !duplicated(names(zebra_geo))]"
+"0",""
+"0","#latitude vs datetime"
+"0","plot(zebra_geo$latitude ~ zebra_geo$datetime, "
+"0","     xlab = ""Datetime"", ylab = ""LAT"", main = ""Latitude vs Datetime"")"

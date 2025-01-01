@@ -1,0 +1,7 @@
+"0",""
+"0","#there is a similar outlier at a longitude of ~145 degrees"
+"0","#the main cluster is ~120 degrees longitude"
+"0",""
+"0","#latitude vs Longitude (spatial plot)"
+"0","plot(zebra_geo$latitude ~ zebra_geo$longitude, "
+"0","     xlab = ""Longitude"", ylab = ""Latitude"", main = ""Latitude vs Longitude"")"

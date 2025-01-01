@@ -1,0 +1,5 @@
+"0",""
+"0","#log-transformed velocity"
+"0","hist(log(individual_steps$velocity_kmh), main = ""Histogram of Log(Velocity)"","
+"0","     xlab = ""Log(Velocity)"", ylab = ""Frequency"", col = ""lightblue"")"
+"0",""

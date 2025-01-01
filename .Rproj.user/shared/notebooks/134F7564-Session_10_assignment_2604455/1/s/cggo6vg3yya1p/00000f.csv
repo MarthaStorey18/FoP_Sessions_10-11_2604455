@@ -1,0 +1,7 @@
+"0",""
+"0","plot("
+"0","  zebra_geo_clean['Animal_ID'], #plot by Animal_ID"
+"0","  cex = 0.5,                     "
+"0","  main = ""Zebra Movement Data by Animal ID""  "
+"0",")"
+"0",""

@@ -1,0 +1,30 @@
+# **GIS in R:** Session 11
+
+### **Author:** Martha Storey
+### **Date:** 26/12/24 (Last modeified: 30/12/24)
+
+### Set up the Script
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+```
+
+```{r}
+
+#clear R memory
+rm( list = ls())
+
+library(lubridate) # for data management
+library(sf) # for spatial points/lines analysis and management
+library(terra) # for raster analysis and management
+library(MASS) # distribution fitting
+library(CircStats) # circular statistics, for the vonmises distribution plots
+library(amt) # animal movement tools
+library(raster)
+
+#load the eland data
+eland_data <- read.csv("eland.csv")
+
+```

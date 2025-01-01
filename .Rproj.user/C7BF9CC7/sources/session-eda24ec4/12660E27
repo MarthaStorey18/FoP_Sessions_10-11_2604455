@@ -1,26 +1,24 @@
 {
-    "id": "E885ADE8",
-    "path": "~/Programming/FoP_10-11_2604455/FoP_10_in class practice/Session_10_2604455.Rmd",
+    "id": "12660E27",
+    "path": "~/Programming/FoP_10-11_2604455/FoP_10_in class practice/Session_11_2604455.Rmd",
     "project_path": null,
     "type": "r_markdown",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1735760061307.0,
+    "created": 1735764068561.0,
     "source_on_save": false,
-    "relative_order": 2,
+    "relative_order": 3,
     "properties": {
         "source_window_id": "",
-        "Source": "Source",
-        "cursorPosition": "385,0",
-        "scrollLine": "357"
+        "Source": "Source"
     },
     "folds": "",
-    "lastKnownWriteTime": 1735737612,
+    "lastKnownWriteTime": 1735694344,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1735737612,
+    "last_content_update": 1735694344,
     "read_only": false,
     "read_only_alternatives": []
 }

@@ -1,0 +1,8 @@
+"0",""
+"0","#time intervals in hours"
+"0","time_intervals <- as.numeric(individual_steps$dt_)"
+"0",""
+"0","#histogram of time intervals"
+"0","hist(time_intervals, main = ""Time Intervals Between GPS Points"","
+"0","     xlab = ""Time Interval (hours)"", ylab = ""Frequency"", col = ""lightgray"")"
+"0",""

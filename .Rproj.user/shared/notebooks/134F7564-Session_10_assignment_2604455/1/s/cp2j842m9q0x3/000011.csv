@@ -1,0 +1,4 @@
+"0",""
+"0","#histogram of velocity "
+"0","hist(individual_steps$velocity_kmh, main = ""Histogram of Velocity"","
+"0","     xlab = ""Velocity (km/hour)"", ylab = ""Frequency"", col = ""lightcoral"")"

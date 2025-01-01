@@ -1,0 +1,4 @@
+"0",""
+"0","#convert the trajectory object into a dataframe"
+"0","zebra_traj_df <- ld(zebra_traj)"
+"0",""
