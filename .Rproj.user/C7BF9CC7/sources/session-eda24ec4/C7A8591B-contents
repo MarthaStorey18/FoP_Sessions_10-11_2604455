@@ -68,3 +68,73 @@ zebra_data <- zebra_data %>%
   distinct()
 
 ```
+
+### Spatial Outliers
+
+Making the data into a spatial object and reprojecting it to a standard coordinate reference system (CRS)
+```{r}
+
+#make the zebra data into a shape file and project it to have the right CRS for the study area 
+zebra_sf <- st_as_sf(       
+  zebra_data,                
+  coords = c("LON", "LAT"),
+  crs= 21036)
+
+#reproject the zebra data to a standard CRS
+#epsg:4326 CRS coordinate reference system lat/long with WGS84 datum
+zebra_geo <- st_transform(zebra_sf, crs = 4326)
+
+#extract coordinates (longitude and latitude)
+coordinates <- st_coordinates(zebra_geo)
+
+#add longitude and latitude columns without removing existing data
+zebra_geo$longitude <- coordinates[, 1]  #X-coordinate
+zebra_geo$latitude <- coordinates[, 2]   #Y-coordinate
+
+```
+
+Using graphs to visually check for spatial outliers
+```{r}
+
+#clean up duplicate columns
+zebra_geo <- zebra_geo[, !duplicated(names(zebra_geo))]
+
+#latitude vs datetime
+plot(zebra_geo$latitude ~ zebra_geo$datetime, 
+     xlab = "Datetime", ylab = "LAT", main = "Latitude vs Datetime")
+
+#there appears to be an outlier at a latitude of 10 degrees ~ mid 2022
+#the rest of the data appears clustered around -20 degrees latitude
+
+#longitude vs datetime
+plot(zebra_geo$longitude ~ zebra_geo$datetime, 
+     xlab = "Datetime", ylab = "Longitude", main = "Longitude vs Datetime")
+
+#there is a similar outlier at a longitude of ~145 degrees
+#the main cluster is ~120 degrees longitude
+
+#latitude vs Longitude (spatial plot)
+plot(zebra_geo$latitude ~ zebra_geo$longitude, 
+     xlab = "Longitude", ylab = "Latitude", main = "Latitude vs Longitude")
+
+#this plot confirms the existence of two distinct clusters: 1. (120, -20) and 2. (145, 10)
+
+```
+
+Filtering out the spatial outliers and visualising the result 
+```{r}
+
+#define the bounding box for the main cluster (without outliers)
+latitude_range <- c(-30, -10)
+longitude_range <- c(110, 130)
+
+#filter the data within the bounding box
+zebra_geo_clean <- subset(zebra_geo, 
+                          latitude > latitude_range[1] & latitude < latitude_range[2] & 
+                          longitude > longitude_range[1] & longitude < longitude_range[2])
+
+#replot the latitude vs longitude spatial plot
+plot(zebra_geo_clean$latitude ~ zebra_geo_clean$longitude, 
+     xlab = "Longitude", ylab = "Latitude", main = "Latitude vs Longitude (Filtered Data)")
+
+```
