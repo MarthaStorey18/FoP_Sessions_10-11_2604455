@@ -138,3 +138,66 @@ plot(zebra_geo_clean$latitude ~ zebra_geo_clean$longitude,
      xlab = "Longitude", ylab = "Latitude", main = "Latitude vs Longitude (Filtered Data)")
 
 ```
+
+### Visualise 
+
+Remove any duplicated data
+```{r}
+
+#identify duplicated rows 
+invisible(duplicated(zebra_geo_clean))
+
+#remove any duplicated rows of data using the subset function
+zebra_geo_clean_2 <- subset(zebra_geo_clean,duplicated(zebra_geo_clean)==FALSE)
+
+#remove rows with duplicated data time and Animal_ID values 
+zebra_geo_clean <- zebra_geo_clean[!duplicated(paste(zebra_geo_clean$datetime, zebra_geo_clean$Animal_ID)),]
+
+```
+
+GPS point map
+```{r}
+
+plot(
+  zebra_geo_clean['Animal_ID'], #plot by Animal_ID
+  cex = 0.5,                     
+  main = "Zebra Movement Data by Animal ID"  
+)
+
+```
+
+Trajectory map
+```{r}
+
+#convert the spatial data into a trajectory object using adehabitatLT's as.ltraj function 
+zebra_traj <- as.ltraj(
+  xy = cbind(as.numeric(zebra_geo_clean$longitude),as.numeric(zebra_geo_clean$latitude)),
+  date = zebra_geo_clean$datetime, #assign time stamp data to each observation 
+  id = as.factor(zebra_geo_clean$Animal_ID) #assign unique ID data to each animal
+  )
+
+#convert the spatial data to an sf object with geographical coordinates
+zebra_geo_clean <- st_as_sf(
+  zebra_geo_clean,
+  coords = c("longitude", "latitude"),
+  crs = 4326
+  )
+
+#function to create spatial lines for each Animal_ID
+create_spatial_lines <- function(data) {
+  data %>%
+    group_by(Animal_ID) %>%                    #group by animal ID
+    summarise(geometry = st_combine(geometry), #combine points into a multipoint geometry 
+              do_union = FALSE                 #do not merge overlapping geometries 
+              ) %>%
+    st_cast("LINESTRING")                     #convert multipoint into a linestring
+}
+
+#apply the function to create spatial lines from the spatial data
+zebra_sl <- create_spatial_lines(zebra_geo_clean)
+
+#plot the resulting spatial lines, grouped by Animal_ID
+plot(zebra_sl['Animal_ID'], main = "Zebra Trajectory Data by Animal ID")
+
+```
+
