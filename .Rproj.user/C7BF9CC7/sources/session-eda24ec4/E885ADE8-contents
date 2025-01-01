@@ -1,0 +1,387 @@
+# **GIS in R:** Session 10
+
+### **Author:** Martha Storey
+### **Date:** 20/12/24 (Last modeified: 24/12/24)
+
+### Set up the Script
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+```
+
+```{r}
+
+#clear R memory
+rm( list = ls())
+
+library(lubridate) 
+library(adehabitatHR) 
+library(adehabitatLT)
+library(sf) 
+library(terra) 
+library(wildlifeDI) 
+library(ggplot2) 
+library(amt) 
+library(dplyr)
+library(ggplot2)
+
+#load the zebra data
+zebra_data <- read.csv("zebra data.csv")
+
+```
+
+### Manage Data and Time 
+
+Changing the names of the x and y columns and adding a new column called datetime (with date and time)
+```{r}
+
+zebra_data <- zebra_data %>%
+  rename(LON = y) #y now = 'LON'
+
+zebra_data <- zebra_data %>%
+  rename(LAT = x) #x now = 'LAT' 
+
+#new datetime column 
+zebra_data$datetime <- dmy_hm(zebra_data$datetime)
+
+```
+
+Converting ‘datetime’ to ‘Africa/Nairobi’ timezone
+```{r}
+
+zebra_data$datetime <- with_tz(zebra_data$datetime,tzone = 'Africa/Nairobi')
+
+```
+
+Creating a new column of ‘year’ and 'month' and remove duplicate rows
+```{r}
+
+zebra_data <- zebra_data %>%
+  #create new columns for year and month
+  mutate(
+    year = year(datetime),
+    month = month(datetime)
+  ) %>%
+  #remove duplicate rows
+  distinct()
+
+```
+
+### Spatial Outliers
+
+Making the data into a spatial object and reprojecting it to a standard coordinate reference system (CRS)
+```{r}
+
+#make the zebra data into a shape file and project it to have the right CRS for the study area 
+zebra_sf <- st_as_sf(       
+  zebra_data,                
+  coords = c("LON", "LAT"),
+  crs= 21036)
+
+#reproject the zebra data to a standard CRS
+#epsg:4326 CRS coordinate reference system lat/long with WGS84 datum
+zebra_geo <- st_transform(zebra_sf, crs = 4326)
+
+#extract coordinates (longitude and latitude)
+coordinates <- st_coordinates(zebra_geo)
+
+#add longitude and latitude columns without removing existing data
+zebra_geo$longitude <- coordinates[, 1]  #X-coordinate
+zebra_geo$latitude <- coordinates[, 2]   #Y-coordinate
+
+```
+
+Using graphs to visually check for spatial outliers
+```{r}
+
+#clean up duplicate columns
+zebra_geo <- zebra_geo[, !duplicated(names(zebra_geo))]
+
+#latitude vs datetime
+plot(zebra_geo$latitude ~ zebra_geo$datetime, 
+     xlab = "Datetime", ylab = "LAT", main = "Latitude vs Datetime")
+
+#there appears to be an outlier at a latitude of 10 degrees ~ mid 2022
+#the rest of the data appears clustered around -20 degrees latitude
+
+#longitude vs datetime
+plot(zebra_geo$longitude ~ zebra_geo$datetime, 
+     xlab = "Datetime", ylab = "Longitude", main = "Longitude vs Datetime")
+
+#there is a similar outlier at a longitude of ~145 degrees
+#the main cluster is ~120 degrees longitude
+
+#latitude vs Longitude (spatial plot)
+plot(zebra_geo$latitude ~ zebra_geo$longitude, 
+     xlab = "Longitude", ylab = "Latitude", main = "Latitude vs Longitude")
+
+#this plot confirms the existence of two distinct clusters: 1. (120, -20) and 2. (145, 10)
+
+```
+
+Filtering out the spatial outliers and visualising the result 
+```{r}
+
+#define the bounding box for the main cluster (without outliers)
+latitude_range <- c(-30, -10)
+longitude_range <- c(110, 130)
+
+#filter the data within the bounding box
+zebra_geo_clean <- subset(zebra_geo, 
+                          latitude > latitude_range[1] & latitude < latitude_range[2] & 
+                          longitude > longitude_range[1] & longitude < longitude_range[2])
+
+#replot the latitude vs longitude spatial plot
+plot(zebra_geo_clean$latitude ~ zebra_geo_clean$longitude, 
+     xlab = "Longitude", ylab = "Latitude", main = "Latitude vs Longitude (Filtered Data)")
+
+```
+
+### Visualise 
+
+Remove any duplicated data
+```{r}
+
+#identify duplicated rows 
+invisible(duplicated(zebra_geo_clean))
+
+#remove any duplicated rows of data using the subset function
+zebra_geo_clean_2 <- subset(zebra_geo_clean,duplicated(zebra_geo_clean)==FALSE)
+
+#remove rows with duplicated data time and Animal_ID values 
+zebra_geo_clean <- zebra_geo_clean[!duplicated(paste(zebra_geo_clean$datetime, zebra_geo_clean$Animal_ID)),]
+
+```
+
+GPS point map
+```{r}
+
+plot(
+  zebra_geo_clean['Animal_ID'], #plot by Animal_ID
+  cex = 0.5,                     
+  main = "Zebra Movement Data by Animal ID"  
+)
+
+```
+
+Trajectory map
+```{r}
+
+#convert the spatial data into a trajectory object using adehabitatLT's as.ltraj function 
+zebra_traj <- as.ltraj(
+  xy = cbind(as.numeric(zebra_geo_clean$longitude),as.numeric(zebra_geo_clean$latitude)),
+  date = zebra_geo_clean$datetime, #assign time stamp data to each observation 
+  id = as.factor(zebra_geo_clean$Animal_ID) #assign unique ID data to each animal
+  )
+
+#convert the spatial data to an sf object with geographical coordinates
+zebra_geo_clean <- st_as_sf(
+  zebra_geo_clean,
+  coords = c("longitude", "latitude"),
+  crs = 4326
+  )
+
+#function to create spatial lines for each Animal_ID
+create_spatial_lines <- function(data) {
+  data %>%
+    group_by(Animal_ID) %>%                    #group by animal ID
+    summarise(geometry = st_combine(geometry), #combine points into a multipoint geometry 
+              do_union = FALSE                 #do not merge overlapping geometries 
+              ) %>%
+    st_cast("LINESTRING")                     #convert multipoint into a linestring
+}
+
+#apply the function to create spatial lines from the spatial data
+zebra_sl <- create_spatial_lines(zebra_geo_clean)
+
+#plot the resulting spatial lines, grouped by Animal_ID
+plot(zebra_sl['Animal_ID'], main = "Zebra Trajectory Data by Animal ID")
+
+```
+
+### Step lengths & turning angles
+
+Retrieve the step lengths and turning angles
+```{r}
+
+#convert the trajectory object into a dataframe
+zebra_traj_df <- ld(zebra_traj)
+
+```
+
+
+**Units:**
+
+* Step length (dist): degrees (due to initial geographic CRS EPSG: 4326)
+
+* Relative angle (rel.angle): radians
+
+* Time difference (dt): seconds
+
+
+Transform lat/long into UTM for linear distances 
+```{r}
+
+#transform the spatial data (EPSG: 4326) to UTM zone 36S (EPSG: 21036) to get linear distances
+zebra_geo_clean_utm <- st_transform(zebra_geo_clean, crs = 21036)
+
+#extract coordinates in meters and preserve datetime and Animal_ID variables 
+zebra_data_utm <- data.frame(
+  st_coordinates(zebra_geo_clean_utm),
+  datetime = zebra_geo_clean_utm$datetime,
+  Animal_ID = zebra_geo_clean_utm$Animal_ID
+)
+
+#recreate the trajectory object with UTM coordinates
+zebra_traj_utm <- as.ltraj(
+  xy = cbind(zebra_data_utm$X, zebra_data_utm$Y),
+  date = zebra_data_utm$datetime,
+  id = as.factor(zebra_data_utm$Animal_ID)
+)
+
+#convert the trajectory into a dataframe to include updated step lengths and turning angles
+zebra_traj_df_utm <- ld(zebra_traj_utm)
+
+```
+
+
+**Units:**
+
+* Step length (dist): meters 
+
+* Relative angle (rel.angle): radians
+
+* Time difference (dt): seconds 
+
+
+Regularise sampling frequency to a common interval
+```{r}
+
+#select one individual for simplification
+unique_ids <- unique(zebra_data_utm$Animal_ID)
+individual_id <- unique_ids[1] #first ID in the list
+individual_data <- subset(zebra_data_utm, Animal_ID == individual_id)
+
+#filter out the rows with NA values in datetime
+individual_data <- individual_data[!is.na(individual_data$datetime), ]
+
+#convert to 'track' class using amt package
+individual_track <- make_track(
+  tbl = as.data.frame(individual_data),
+  .x = X,
+  .y = Y,
+  .t = datetime,
+  all_cols = TRUE
+)
+
+#regularise to a fixed 24-hour interval
+individual_track_resampled <- amt::track_resample(
+  individual_track,
+  rate = hours(24),
+  tolerance = minutes(15)
+)
+
+#filter for bursts with at least 3 steps
+individual_track_filtered <- amt::filter_min_n_burst(individual_track_resampled, min_n = 3)
+
+#extract steps and calculate the turning angles
+individual_steps <- amt::steps_by_burst(individual_track_filtered)
+
+```
+
+
+**Units after regularisation:**
+
+* Step length (sl_): meters
+
+* Turning angle (ta_): radians
+
+* Time difference (dt_): hours
+
+
+Time interval analysis 
+```{r}
+
+#time intervals in hours
+time_intervals <- as.numeric(individual_steps$dt_)
+
+#histogram of time intervals
+hist(time_intervals, main = "Time Intervals Between GPS Points",
+     xlab = "Time Interval (hours)", ylab = "Frequency", col = "lightgray")
+
+```
+
+Step length and velocity analysis
+```{r}
+
+#convert dt_ (time difference) to numeric in seconds
+individual_steps$dt_numeric <- as.numeric(individual_steps$dt_, units = "secs")
+
+#calculate velocity in km/h
+individual_steps$velocity_kmh <- (individual_steps$sl_ / 1000) / (individual_steps$dt_numeric / 3600)
+
+#histogram of step lengths
+hist(individual_steps$sl_, main = "Histogram of Step Lengths",
+     xlab = "Step Length (meters)", ylab = "Frequency", col = "lightgreen")
+
+#histogram of velocity 
+hist(individual_steps$velocity_kmh, main = "Histogram of Velocity",
+     xlab = "Velocity (km/hour)", ylab = "Frequency", col = "lightcoral")
+
+#log-transformed velocity
+hist(log(individual_steps$velocity_kmh), main = "Histogram of Log(Velocity)",
+     xlab = "Log(Velocity)", ylab = "Frequency", col = "lightblue")
+
+```
+
+Velocity by hour of day
+```{r}
+
+#extract the hour from timestamps
+individual_steps$hour <- hour(individual_steps$t2_)
+
+#calculate median velocity by hour
+velocity_by_hour <- individual_steps %>%
+  group_by(hour) %>%
+  summarise(
+    median_velocity = median(velocity_kmh, na.rm = TRUE),
+    lower_CI = quantile(velocity_kmh, 0.25, na.rm = TRUE),
+    upper_CI = quantile(velocity_kmh, 0.75, na.rm = TRUE)
+  )
+
+#plot a boxplot of the hourly variation in velocity with a red median trendline
+ggplot(individual_steps, aes(x = factor(hour), y = velocity_kmh)) +
+  geom_boxplot(outlier.shape = NA, fill= "thistle2") +
+  stat_summary(fun = median, geom = "line", aes(group = 1), color = "red", size = 1) +
+  stat_summary(fun = median, geom = "point", color = "red", size = 2) +
+  labs(title = "Hourly Variation in Velocity with Median Trendline",
+       x = "Hour of Day",
+       y = "Velocity (km/h)") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+```
+
+Linear model: log(velocity) vs. hour of day
+```{r}
+
+#simple linear model comparing velocity across hours
+velocity_lm <- lm(log(velocity_kmh) ~ hour, data = individual_steps)
+
+#visualise the fitted model
+ggplot(individual_steps, aes(x = hour, y = log(velocity_kmh))) +
+  geom_jitter(width=0.6, alpha = 0.3) +
+  geom_smooth(method = "lm", color = "blue", fill = "lightblue", alpha = 0.3) +
+  stat_summary(fun = mean, geom = "point", size = 3, color = "red") +
+  labs(
+    title = "Relationship Between Hour of Day and Log(Velocity)",
+    x = "Hour of Day",
+    y = "Logarithm of Velocity (km/h)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"))
+
+```

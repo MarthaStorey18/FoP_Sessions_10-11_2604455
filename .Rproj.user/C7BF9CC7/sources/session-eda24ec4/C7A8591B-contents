@@ -1,0 +1,33 @@
+# **GIS in R:** Session 10
+
+### **Author:** Martha Storey
+### **Date:** 20/12/24 (Last modeified: 24/12/24)
+
+### Set up the Script
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+```
+
+```{r}
+
+#clear R memory
+rm( list = ls())
+
+library(lubridate) 
+library(adehabitatHR) 
+library(adehabitatLT)
+library(sf) 
+library(terra) 
+library(wildlifeDI) 
+library(ggplot2) 
+library(amt) 
+library(dplyr)
+library(ggplot2)
+
+#load the zebra data
+zebra_data <- read.csv("zebra data.csv")
+
+```
