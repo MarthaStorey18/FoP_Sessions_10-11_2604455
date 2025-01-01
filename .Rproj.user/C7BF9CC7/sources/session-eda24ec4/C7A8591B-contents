@@ -31,3 +31,40 @@ library(ggplot2)
 zebra_data <- read.csv("zebra data.csv")
 
 ```
+
+### Manage Data and Time 
+
+Changing the names of the x and y columns and adding a new column called datetime (with date and time)
+```{r}
+
+zebra_data <- zebra_data %>%
+  rename(LON = y) #y now = 'LON'
+
+zebra_data <- zebra_data %>%
+  rename(LAT = x) #x now = 'LAT' 
+
+#new datetime column 
+zebra_data$datetime <- dmy_hm(zebra_data$datetime)
+
+```
+
+Converting ‘datetime’ to ‘Africa/Nairobi’ timezone
+```{r}
+
+zebra_data$datetime <- with_tz(zebra_data$datetime,tzone = 'Africa/Nairobi')
+
+```
+
+Creating a new column of ‘year’ and 'month' and remove duplicate rows
+```{r}
+
+zebra_data <- zebra_data %>%
+  #create new columns for year and month
+  mutate(
+    year = year(datetime),
+    month = month(datetime)
+  ) %>%
+  #remove duplicate rows
+  distinct()
+
+```
