@@ -61,3 +61,31 @@ eland_df_UTM <- data.frame(st_coordinates(eland_sp_UTM),
                    Animal_ID = eland_sp_UTM$Animal_ID)
 
 ```
+
+### Make Track
+
+```{r}
+
+#print the unique individuals in the dataset
+unique(eland_df_UTM$Animal_ID)
+
+#select one individual and make it into a dataframe
+eland_1 <- subset(eland_df_UTM, Animal_ID == "E04")
+
+#remove dataframe NAs
+eland_1 <- eland_1[!is.na(eland_1$datetime),]
+
+#convert dataframe into a track class object using the amt package
+eland_1 <- amt::make_track(tbl = as.data.frame(eland_1),
+                  .x = X, #column name of x
+                  .y = Y, #column name of y
+                  .t = datetime, #column name of date + time
+                  all_cols=TRUE)
+
+#plot points
+plot(eland_1, main='Trajectory of eland E04',col='blue')
+
+#observing the sampling rate
+summarize_sampling_rate(eland_1)
+
+```
